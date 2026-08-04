@@ -1,0 +1,63 @@
+# Render Blueprint — deploy the whole bot with one click ("New + → Blueprint").
+# https://render.com/docs/blueprint-spec
+services:
+  # 1) Always-on web service: receives Terros + Vendo (Event Grid) webhooks.
+  - type: web
+    name: saas-bridge-web
+    runtime: node
+    plan: starter          # $7/mo — always on. Do NOT use "free" (spins down, drops webhooks).
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars: &shared-env
+      - key: ODOO_URL
+        sync: false
+      - key: ODOO_DB
+        sync: false
+      - key: ODOO_USERNAME
+        sync: false
+      - key: ODOO_API_KEY
+        sync: false
+      - key: ODOO_FALLBACK_USER_ID
+        value: "2"
+      - key: ODOO_STAGE_NEW
+        value: New
+      - key: ODOO_STAGE_BOOKED
+        value: Booked
+      - key: ODOO_STAGE_QUOTED
+        value: Quoted
+      - key: ODOO_STAGE_WON
+        value: Won
+      - key: ODOO_STAGE_LOST
+        value: Lost
+      - key: TERROS_BASE_URL
+        value: https://api.terros.com
+      - key: TERROS_API_KEY
+        sync: false
+      - key: TERROS_WEBHOOK_TOKEN
+        sync: false
+      - key: VENDO_BASE_URL
+        value: https://api.paradigmvendo.com
+      - key: VENDO_PUBLIC_KEY
+        sync: false
+      - key: VENDO_PRIVATE_KEY
+        sync: false
+      - key: VENDO_WEBHOOK_AUTH_HEADER
+        value: x-webhook-token
+      - key: VENDO_WEBHOOK_TOKEN
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # 2) Cron job: polls Odoo for newly-booked leads and creates Vendo appointments.
+  - type: cron
+    name: saas-bridge-poll
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "*/5 * * * *"   # every 5 minutes
+    buildCommand: npm install && npm run build
+    startCommand: npm run cron:poll
+    envVars: *shared-env
