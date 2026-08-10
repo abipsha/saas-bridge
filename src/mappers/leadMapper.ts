@@ -90,8 +90,11 @@ export function leadToVendoAppointment(
 /** Normalize a Vendo Appointment Result webhook body into our outcome shape.
  *  Matches back to Odoo via integration_id (the lead id we set at booking). */
 export function vendoResultToOutcome(body: VendoResultPayload): VendoOutcome {
-  const idNum = body.integration_id ? Number(body.integration_id) : NaN;
-  const odooLeadId = Number.isFinite(idNum) ? idNum : undefined;
+  // integration_id is our Odoo lead id ONLY when the bot booked the appointment
+  // (we set it to the numeric lead id). Vendo-native appointments send a UUID, so
+  // guard the parse — a non-integer must fall through to the appointment_id match.
+  const idNum = body.integration_id != null ? Number(body.integration_id) : NaN;
+  const odooLeadId = Number.isInteger(idNum) && idNum > 0 ? idNum : undefined;
   const amount = typeof body.quote_price === "number" ? body.quote_price : undefined;
 
   const names = (body.result ?? []).map((r) => (r.name ?? "").trim().toLowerCase());
@@ -104,9 +107,23 @@ export function vendoResultToOutcome(body: VendoResultPayload): VendoOutcome {
     result = "quoted";
   }
 
+  const quote = body.quote_data?.[0];
+  const quoteId = quote?.quote_ids?.[0] ?? quote?.quote_number;
+  const installationNotesUrl = (body.proposal_pdf ?? []).find(
+    (d) => (d.name ?? "").trim().toLowerCase() === "installation notes"
+  )?.url;
+
   const outcome: VendoOutcome = { result };
   if (odooLeadId !== undefined) outcome.odooLeadId = odooLeadId;
   if (body.appointment_id !== undefined) outcome.appointmentId = String(body.appointment_id);
+  if (body.lead_id) outcome.crmId = String(body.lead_id);
   if (amount !== undefined) outcome.amount = amount;
+  if (quoteId) outcome.quoteId = String(quoteId);
+  if (installationNotesUrl) outcome.installationNotesUrl = installationNotesUrl;
+  if (body.note) outcome.note = String(body.note);
+  if (body.seller_email) outcome.sellerEmail = String(body.seller_email);
+  if (body.contact) outcome.contactName = String(body.contact);
+  if (body.customer_email) outcome.email = String(body.customer_email);
+  if (body.phonenumber) outcome.phone = String(body.phonenumber);
   return outcome;
 }

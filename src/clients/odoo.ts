@@ -102,6 +102,18 @@ export class OdooClient {
     return id;
   }
 
+  /** Resolve a res.users id by login/email — used to set the Salesperson. */
+  async findUserIdByEmail(email?: string): Promise<number | null> {
+    if (!email) return null;
+    const rows = await this.searchRead<{ id: number }>(
+      "res.users",
+      ["|", ["login", "=ilike", email], ["email", "=ilike", email]],
+      ["id"],
+      1
+    );
+    return rows[0]?.id ?? null;
+  }
+
   /** Find a lead id by one of our external-id custom fields. */
   async findLeadIdByExternal(field: string, value: string): Promise<number | null> {
     const rows = await this.searchRead<{ id: number }>(

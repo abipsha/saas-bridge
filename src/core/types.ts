@@ -81,6 +81,7 @@ export interface OdooLeadVals {
   x_appointment_datetime?: string; // Odoo UTC datetime "YYYY-MM-DD HH:MM:SS"
   x_vendo_appointment_id?: string;
   x_vendo_quote_id?: string;
+  x_vendo_installation_notes_url?: string;
   expected_revenue?: number;
   stage_id?: number;
 }
@@ -125,24 +126,54 @@ export interface VendoResultLine {
   reason_name?: string;
 }
 
-/** The Appointment Result webhook body (fields we consume). */
+/** One document entry inside the Appointment Result `proposal_pdf` array. */
+export interface VendoDocument {
+  url?: string;
+  name?: string; // "Installation Notes" | "Inspection Report" | "Contract1" | ...
+}
+
+/** One quote entry inside the Appointment Result `quote_data` array. */
+export interface VendoQuoteData {
+  quote_ids?: string[];
+  quote_number?: string;
+  [k: string]: unknown;
+}
+
+/**
+ * The Appointment Result webhook body. Field names confirmed against the live
+ * Vendo webhook (Advanced Settings → Webhooks → Preview).
+ */
 export interface VendoResultPayload {
-  integration_id?: string; // == appointment_integration_id we set (our Odoo lead id)
-  appointment_id?: number | string;
+  integration_id?: string; // Appointment "Integration ID" — our Odoo lead id IF we booked it (else a Vendo UUID)
+  lead_id?: string; // Appointment "CRM ID"
+  appointment_id?: number | string; // Appointment "ID"
   quote_price?: number;
-  result?: VendoResultLine[];
+  result?: VendoResultLine[]; // Appointment "Opportunity Results"
   proposal_url?: string;
-  contact?: string;
-  customer_email1?: string;
+  proposal_pdf?: VendoDocument[]; // Appointment "Documents"
+  inspection_url?: string;
+  contact?: string; // Customer "Full Name"
+  customer_email?: string; // Customer "Email"
   phonenumber?: string;
-  notes?: string;
+  seller_email?: string; // Appointment "Seller Email" — used to set the Odoo salesperson
+  notes?: string; // Appointment "Result Reason" (NOT the appointment notes)
+  note?: string; // Appointment "Notes"
+  quote_data?: VendoQuoteData[]; // Appointment "Quotes"
   [k: string]: unknown;
 }
 
 /** Normalized outcome we hand to the Odoo workflow. */
 export interface VendoOutcome {
-  odooLeadId?: number; // parsed from integration_id
+  odooLeadId?: number; // parsed from integration_id when numeric
   appointmentId?: string;
+  crmId?: string; // Vendo "CRM ID" (lead_id) — alternate match key
   result: "quoted" | "won" | "lost" | "unknown";
   amount?: number;
+  quoteId?: string;
+  installationNotesUrl?: string;
+  note?: string;
+  sellerEmail?: string;
+  contactName?: string;
+  email?: string;
+  phone?: string;
 }
