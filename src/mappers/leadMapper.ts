@@ -114,6 +114,7 @@ export function vendoResultToOutcome(body: VendoResultPayload): VendoOutcome {
   )?.url;
 
   const outcome: VendoOutcome = { result };
+  if (body.integration_id) outcome.vendoId = String(body.integration_id);
   if (odooLeadId !== undefined) outcome.odooLeadId = odooLeadId;
   if (body.appointment_id !== undefined) outcome.appointmentId = String(body.appointment_id);
   if (body.lead_id) outcome.crmId = String(body.lead_id);

@@ -11,8 +11,17 @@ import type { VendoOutcome } from "../core/types";
  * the stored Vendo appointment id → the CRM id (if it carries a numeric lead id).
  */
 export async function vendoToOdoo(outcome: VendoOutcome): Promise<number | null> {
-  let leadId: number | null = outcome.odooLeadId ?? null;
+  // Primary match: Vendo's integration_id equals the Odoo lead's "Vendo ID"
+  // custom field (x_studio_vendo_id). Falls back to the numeric lead id, the
+  // stored Vendo appointment id, then the CRM id.
+  let leadId: number | null = null;
 
+  if (outcome.vendoId) {
+    leadId = await odoo.findLeadIdByExternal("x_studio_vendo_id", outcome.vendoId);
+  }
+  if (!leadId && outcome.odooLeadId) {
+    leadId = outcome.odooLeadId;
+  }
   if (!leadId && outcome.appointmentId) {
     leadId = await odoo.findLeadIdByExternal("x_vendo_appointment_id", outcome.appointmentId);
   }
@@ -22,6 +31,7 @@ export async function vendoToOdoo(outcome: VendoOutcome): Promise<number | null>
   }
   if (!leadId) {
     logger.warn("No Odoo lead matches Vendo result", {
+      vendoId: outcome.vendoId,
       integrationId: outcome.odooLeadId,
       appointmentId: outcome.appointmentId,
       crmId: outcome.crmId,

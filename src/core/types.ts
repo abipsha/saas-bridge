@@ -164,7 +164,8 @@ export interface VendoResultPayload {
 
 /** Normalized outcome we hand to the Odoo workflow. */
 export interface VendoOutcome {
-  odooLeadId?: number; // parsed from integration_id when numeric
+  vendoId?: string; // raw integration_id — matched against Odoo's x_studio_vendo_id ("Vendo ID")
+  odooLeadId?: number; // parsed from integration_id when numeric (legacy fallback)
   appointmentId?: string;
   crmId?: string; // Vendo "CRM ID" (lead_id) — alternate match key
   result: "quoted" | "won" | "lost" | "unknown";
